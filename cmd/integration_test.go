@@ -1,4 +1,5 @@
 //go:build integration
+//nolint:govet // Ignore deprecated build tag warning
 // +build integration
 
 package main

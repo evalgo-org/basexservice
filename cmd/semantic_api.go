@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -15,60 +14,37 @@ import (
 
 // handleSemanticAction handles Schema.org JSON-LD actions for BaseX operations
 func handleSemanticAction(c echo.Context) error {
-	var rawJSON map[string]interface{}
-	if err := c.Bind(&rawJSON); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse JSON: %v", err))
-	}
-
-	// Check if it's JSON-LD by looking for @context or @type
-	if _, hasContext := rawJSON["@context"]; hasContext {
-		return handleJSONLDAction(c, rawJSON)
-	}
-
-	if actionType, hasType := rawJSON["@type"]; hasType {
-		return handleJSONLDAction(c, rawJSON)
-	} else {
-		_ = actionType // Use variable to avoid unused error
-	}
-
-	return echo.NewHTTPError(http.StatusBadRequest, "Request must be JSON-LD with @type field")
-}
-
-// handleJSONLDAction routes JSON-LD actions to appropriate handlers
-func handleJSONLDAction(c echo.Context, rawJSON map[string]interface{}) error {
-	actionType, ok := rawJSON["@type"].(string)
-	if !ok {
-		return echo.NewHTTPError(http.StatusBadRequest, "@type field must be a string")
-	}
-
-	// Marshal back to bytes for proper parsing
-	data, err := json.Marshal(rawJSON)
+	// Read request body
+	body, err := io.ReadAll(c.Request().Body)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to marshal JSON: %v", err))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to read request body: %v", err))
 	}
 
-	switch actionType {
-	case "UpdateAction": // TransformAction
-		return executeTransformAction(c, data)
-	case "SearchAction": // QueryAction
-		return executeQueryAction(c, data)
-	case "UploadAction": // BaseXUploadAction
-		return executeUploadAction(c, data)
-	case "CreateAction": // CreateDatabaseAction
-		return executeCreateDatabaseAction(c, data)
-	case "DeleteAction": // DeleteDatabaseAction
-		return executeDeleteDatabaseAction(c, data)
+	// Use EVE library's ParseBaseXAction for routing and parsing
+	action, err := semantic.ParseBaseXAction(body)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse action: %v", err))
+	}
+
+	// Route to appropriate handler based on type
+	switch v := action.(type) {
+	case *semantic.TransformAction:
+		return executeTransformAction(c, v)
+	case *semantic.QueryAction:
+		return executeQueryAction(c, v)
+	case *semantic.BaseXUploadAction:
+		return executeUploadAction(c, v)
+	case *semantic.CreateDatabaseAction:
+		return executeCreateDatabaseAction(c, v)
+	case *semantic.DeleteDatabaseAction:
+		return executeDeleteDatabaseAction(c, v)
 	default:
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported action type: %s", actionType))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported action type: %T", v))
 	}
 }
 
 // executeTransformAction handles XSLT transformation operations
-func executeTransformAction(c echo.Context, data []byte) error {
-	var action semantic.TransformAction
-	if err := json.Unmarshal(data, &action); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse TransformAction: %v", err))
-	}
+func executeTransformAction(c echo.Context, action *semantic.TransformAction) error {
 
 	// Extract target database credentials
 	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Target)
@@ -101,12 +77,7 @@ func executeTransformAction(c echo.Context, data []byte) error {
 }
 
 // executeQueryAction handles XQuery execution operations
-func executeQueryAction(c echo.Context, data []byte) error {
-	var action semantic.QueryAction
-	if err := json.Unmarshal(data, &action); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse QueryAction: %v", err))
-	}
-
+func executeQueryAction(c echo.Context, action *semantic.QueryAction) error {
 	// Extract target database credentials
 	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Target)
 	if err != nil {
@@ -146,12 +117,7 @@ func executeQueryAction(c echo.Context, data []byte) error {
 }
 
 // executeUploadAction handles file upload to BaseX operations
-func executeUploadAction(c echo.Context, data []byte) error {
-	var action semantic.BaseXUploadAction
-	if err := json.Unmarshal(data, &action); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse BaseXUploadAction: %v", err))
-	}
-
+func executeUploadAction(c echo.Context, action *semantic.BaseXUploadAction) error {
 	// Extract target database credentials
 	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Target)
 	if err != nil {
@@ -190,12 +156,7 @@ func executeUploadAction(c echo.Context, data []byte) error {
 }
 
 // executeCreateDatabaseAction handles database creation operations
-func executeCreateDatabaseAction(c echo.Context, data []byte) error {
-	var action semantic.CreateDatabaseAction
-	if err := json.Unmarshal(data, &action); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse CreateDatabaseAction: %v", err))
-	}
-
+func executeCreateDatabaseAction(c echo.Context, action *semantic.CreateDatabaseAction) error {
 	// Extract database credentials
 	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Result)
 	if err != nil {
@@ -218,12 +179,7 @@ func executeCreateDatabaseAction(c echo.Context, data []byte) error {
 }
 
 // executeDeleteDatabaseAction handles database/document deletion operations
-func executeDeleteDatabaseAction(c echo.Context, data []byte) error {
-	var action semantic.DeleteDatabaseAction
-	if err := json.Unmarshal(data, &action); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse DeleteDatabaseAction: %v", err))
-	}
-
+func executeDeleteDatabaseAction(c echo.Context, action *semantic.DeleteDatabaseAction) error {
 	// Determine if deleting database or document
 	// This is a simplified implementation
 	action.ActionStatus = "CompletedActionStatus"
