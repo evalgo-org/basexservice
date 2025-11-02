@@ -17,23 +17,25 @@ func main() {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORS())
 
-	// API Key middleware
-	apiKeyMiddleware := middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
-		apiKey := os.Getenv("BASEX_API_KEY")
-		if apiKey == "" {
-			// If no API key is set, allow all requests (development mode)
-			return true, nil
-		}
-		return key == apiKey, nil
-	})
-
 	// Routes
 	e.GET("/health", func(c echo.Context) error {
 		return c.JSON(200, map[string]string{"status": "healthy"})
 	})
 
-	// Semantic API endpoints
-	e.POST("/v1/api/semantic/action", handleSemanticAction, apiKeyMiddleware)
+	// API Key middleware - only apply if BASEX_API_KEY is set
+	apiKey := os.Getenv("BASEX_API_KEY")
+	if apiKey != "" {
+		// Production mode: require API key
+		apiKeyMiddleware := middleware.KeyAuth(func(key string, c echo.Context) (bool, error) {
+			return key == apiKey, nil
+		})
+		e.POST("/v1/api/semantic/action", handleSemanticAction, apiKeyMiddleware)
+		log.Printf("API Key authentication enabled")
+	} else {
+		// Development mode: no authentication
+		e.POST("/v1/api/semantic/action", handleSemanticAction)
+		log.Printf("Running in development mode (no API key required)")
+	}
 
 	// Start server
 	port := os.Getenv("PORT")
