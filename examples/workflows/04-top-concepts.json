@@ -1,0 +1,142 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "@id": "iqs-top-concepts-pipeline",
+  "identifier": "iqs-top-concepts",
+  "name": "IQS: Top Concepts Pipeline",
+  "description": "SPARQL query → Upload XSLT → Transform → Cache top concepts",
+  "parallel": false,
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "query-top-concepts-sparql",
+        "name": "Query Top Concepts from SPARQL Endpoint",
+        "additionalProperty": {
+          "url": "${IQS_SPARQL_URL}/v1/caches/sparql",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "user_id": "top_concepts_of_concept_scheme",
+            "project_id": "IQS",
+            "db_name": "IQS",
+            "concept_scheme": "${CONCEPT_SCHEME_URI}",
+            "content_type": "application/rdf+xml",
+            "query": "get_top_concepts_of_concept_scheme"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-top-concepts-xslt-1",
+        "name": "Upload Top Concepts XSLT Stylesheet 1",
+        "dependsOn": ["query-top-concepts-sparql"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-07-cluster-descriptions",
+            "name": "Upload 07_cluster_descriptions.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "07-cluster-descriptions-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/07_cluster_descriptions.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "07_cluster_descriptions.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-top-concepts-xslt-2",
+        "name": "Upload Top Concepts XSLT Stylesheet 2",
+        "dependsOn": ["upload-top-concepts-xslt-1"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-08-remove-dublicates",
+            "name": "Upload 08_remove_dublicates.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "08-remove-dublicates-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/08_remove_dublicates.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "08_remove_dublicates.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "cache-top-concepts",
+        "name": "Cache Top Concepts Result",
+        "dependsOn": ["upload-top-concepts-xslt-2"],
+        "additionalProperty": {
+          "url": "${IQS_CACHE_URL}/v1/caches/top_concepts",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "user_id": "top_concepts_of_concept_scheme",
+            "project_id": "IQS",
+            "db_name": "IQS"
+          }
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "@type": "Schedule",
+    "repeatFrequency": "PT12H",
+    "description": "Every 12 hours"
+  }
+}

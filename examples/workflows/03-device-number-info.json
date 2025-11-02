@@ -1,0 +1,142 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "@id": "iqs-device-number-info-pipeline",
+  "identifier": "iqs-device-number-info",
+  "name": "IQS: Device Number Info Pipeline",
+  "description": "SPARQL query → Upload XSLT → Transform → Cache",
+  "parallel": false,
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "query-device-number-info-sparql",
+        "name": "Query Device Number Info from SPARQL Endpoint",
+        "additionalProperty": {
+          "url": "${IQS_SPARQL_URL}/v1/caches/sparql",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "user_id": "device_number_info",
+            "project_id": "IQS",
+            "db_name": "IQS",
+            "language": "de-DE",
+            "content_type": "application/rdf+xml",
+            "query": "get_device_number_info"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-device-info-xslt-1",
+        "name": "Upload Device Info XSLT Stylesheet 1",
+        "dependsOn": ["query-device-number-info-sparql"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-04-cluster-description",
+            "name": "Upload 04_cluster_description.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "04-cluster-description-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/04_cluster_description.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "04_cluster_description.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-device-info-xslt-2",
+        "name": "Upload Device Info XSLT Stylesheet 2",
+        "dependsOn": ["upload-device-info-xslt-1"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-05-remove-dublicates",
+            "name": "Upload 05_remove_dublicates.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "05-remove-dublicates-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/05_remove_dublicates.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "05_remove_dublicates.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "cache-device-number-info",
+        "name": "Cache Device Number Info Result",
+        "dependsOn": ["upload-device-info-xslt-2"],
+        "additionalProperty": {
+          "url": "${IQS_CACHE_URL}/v1/caches/devices/number_info",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "user_id": "device_number_info",
+            "project_id": "IQS",
+            "db_name": "IQS"
+          }
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "@type": "Schedule",
+    "repeatFrequency": "PT12H",
+    "description": "Every 12 hours"
+  }
+}

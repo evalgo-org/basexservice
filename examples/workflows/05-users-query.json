@@ -1,0 +1,43 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ScheduledAction",
+  "identifier": "iqs-users-query",
+  "name": "IQS: Users Query",
+  "description": "Query all users from SPARQL endpoint and cache",
+  "additionalProperty": {
+    "url": "${IQS_SPARQL_URL}/v1/caches/sparql",
+    "httpMethod": "POST",
+    "headers": {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    "body": {
+      "user_id": "all_users",
+      "project_id": "IQS",
+      "db_name": "IQS",
+      "content_type": "application/rdf+xml",
+      "query": "get_all_users"
+    },
+    "then": {
+      "@type": "ScheduledAction",
+      "identifier": "cache-users-list",
+      "name": "Cache Users List",
+      "additionalProperty": {
+        "url": "${IQS_CACHE_URL}/v1/caches/certificates/users",
+        "httpMethod": "POST",
+        "headers": {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        "body": {
+          "user_id": "all_users",
+          "project_id": "IQS",
+          "db_name": "IQS"
+        }
+      }
+    }
+  },
+  "schedule": {
+    "@type": "Schedule",
+    "repeatFrequency": "PT12H",
+    "description": "Every 12 hours"
+  }
+}

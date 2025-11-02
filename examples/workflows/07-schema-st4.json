@@ -1,0 +1,346 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "@id": "iqs-schema-st4-pipeline",
+  "identifier": "iqs-schema-st4",
+  "name": "IQS: Schema ST4 Pipeline",
+  "description": "SPARQL query → Upload XSLT → Upload config → Generate XML → Convert to XLSX",
+  "parallel": false,
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "query-schema-st4-sparql",
+        "name": "Query Schema ST4 from SPARQL Endpoint",
+        "additionalProperty": {
+          "url": "${IQS_SPARQL_URL}/v1/caches/sparql",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "user_id": "schema_st4",
+            "project_id": "IQS",
+            "db_name": "IQS",
+            "concept_scheme": "${CONCEPT_SCHEME_URI}",
+            "content_type": "application/rdf+xml",
+            "query": "get_schema_st4"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-schema-st4-xslt-1",
+        "name": "Upload Schema ST4 XSLT Stylesheet 1",
+        "dependsOn": ["query-schema-st4-sparql"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-15-cluster-descriptions",
+            "name": "Upload 15_cluster_descriptions.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "15-cluster-descriptions-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/15_cluster_descriptions.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "15_cluster_descriptions.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-schema-st4-xslt-2",
+        "name": "Upload Schema ST4 XSLT Stylesheet 2",
+        "dependsOn": ["upload-schema-st4-xslt-1"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-16-remove-dublicates",
+            "name": "Upload 16_remove_dublicates.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "16-remove-dublicates-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/16_remove_dublicates.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "16_remove_dublicates.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 4,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-schema-st4-xslt-3",
+        "name": "Upload Schema ST4 XSLT Stylesheet 3",
+        "dependsOn": ["upload-schema-st4-xslt-2"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-17-rdf-to-schema-st4",
+            "name": "Upload 17_rdf_to_schema_st4.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "17-rdf-to-schema-st4-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/17_rdf_to_schema_st4.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "17_rdf_to_schema_st4.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 5,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-schema-st4-xslt-4",
+        "name": "Upload Schema ST4 XSLT Stylesheet 4",
+        "dependsOn": ["upload-schema-st4-xslt-3"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-18-rdf-to-schema-st4",
+            "name": "Upload 18_rdf_to_schema_st4.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "18-rdf-to-schema-st4-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/18_rdf_to_schema_st4.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "18_rdf_to_schema_st4.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 6,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-schema-st4-xslt-5",
+        "name": "Upload Schema ST4 XSLT Stylesheet 5",
+        "dependsOn": ["upload-schema-st4-xslt-4"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-19-rdf-to-schema-st4",
+            "name": "Upload 19_rdf_to_schema_st4.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "19-rdf-to-schema-st4-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/19_rdf_to_schema_st4.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "19_rdf_to_schema_st4.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 7,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-schema-st4-xslt-6",
+        "name": "Upload Schema ST4 XSLT Stylesheet 6",
+        "dependsOn": ["upload-schema-st4-xslt-5"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-20-rdf-to-schema-st4",
+            "name": "Upload 20_rdf_to_schema_st4.xsl",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "20-rdf-to-schema-st4-xsl",
+              "contentUrl": "/home/opunix/iqs/xslt/20_rdf_to_schema_st4.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "20_rdf_to_schema_st4.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 8,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-config-file",
+        "name": "Upload Config File to Filesystem",
+        "dependsOn": ["upload-schema-st4-xslt-6"],
+        "additionalProperty": {
+          "url": "${IQS_CACHE_URL}/v1/caches/filesystem/files",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "multipart/form-data",
+            "Authorization": "Basic ${BASEX_BASIC_AUTH}"
+          },
+          "body": {
+            "remote_file": "/srv/basex/21_config_std.xml",
+            "file": "@/home/opunix/iqs/xslt/21_config_std.xml"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 9,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "generate-schema-st4-xml",
+        "name": "Generate Schema ST4 XML",
+        "dependsOn": ["upload-config-file"],
+        "additionalProperty": {
+          "url": "${IQS_CACHE_URL}/v1/caches/schema/st4",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "application/x-www-form-urlencoded"
+          },
+          "body": {
+            "user_id": "schema_st4",
+            "project_id": "IQS",
+            "db_name": "IQS"
+          },
+          "saveResponseTo": "/tmp/05_IQS_schema_st4.xml"
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 10,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "convert-xml-to-xlsx",
+        "name": "Convert XML to XLSX Format",
+        "dependsOn": ["generate-schema-st4-xml"],
+        "additionalProperty": {
+          "url": "${IQS_CONVERT_URL}/convert",
+          "httpMethod": "POST",
+          "headers": {
+            "Content-Type": "multipart/form-data"
+          },
+          "body": {
+            "file": "@/tmp/05_IQS_schema_st4.xml"
+          },
+          "saveResponseTo": "/tmp/05_IQS_schema_st4.xlsx"
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "@type": "Schedule",
+    "repeatFrequency": "PT24H",
+    "description": "Every 24 hours"
+  }
+}
