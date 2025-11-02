@@ -1,0 +1,104 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ItemList",
+  "identifier": "iqs-empolis-pipeline",
+  "name": "IQS: Empolis JSON Pipeline",
+  "description": "Sequential pipeline: SPARQL query → XSLT transformations → Cache upload",
+  "parallel": false,
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "upload-xslt-files",
+        "name": "Upload XSLT Transformation Files",
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UploadAction",
+            "identifier": "upload-empolis-xslt",
+            "name": "Upload Empolis XSLT Stylesheets",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "empolis-xslt-00",
+              "contentUrl": "/home/opunix/iqs/xslt/Zeiss/getEmpolisJsons/00_ClusterDescriptions.xsl",
+              "encodingFormat": "text/xsl"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "targetUrl": "Zeiss/getEmpolisJsons/00_ClusterDescriptions.xsl"
+          }
+        }
+      }
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "item": {
+        "@type": "ScheduledAction",
+        "identifier": "transform-empolis-data",
+        "name": "Transform SPARQL Result to Empolis JSON",
+        "dependsOn": ["upload-xslt-files"],
+        "additionalProperty": {
+          "url": "http://localhost:8090/v1/api/semantic/action",
+          "httpMethod": "POST",
+          "headers": {
+            "x-api-key": "${BASEX_API_KEY}",
+            "Content-Type": "application/json"
+          },
+          "body": {
+            "@context": "https://schema.org",
+            "@type": "UpdateAction",
+            "identifier": "xslt-transform-empolis",
+            "name": "XSLT Transformation for Empolis",
+            "object": {
+              "@type": "Dataset",
+              "identifier": "empolis-sparql-result",
+              "contentUrl": "/tmp/empolis-query.xml",
+              "encodingFormat": "application/rdf+xml"
+            },
+            "instrument": {
+              "@type": "SoftwareSourceCode",
+              "identifier": "empolis-xslt-pipeline",
+              "contentUrl": "/home/opunix/iqs/xslt/Zeiss/getEmpolisJsons/01_rdf2EmpolisJsons.xsl",
+              "programmingLanguage": "XSLT"
+            },
+            "target": {
+              "@type": "DataCatalog",
+              "identifier": "IQS",
+              "url": "${BASEX_URL}",
+              "additionalProperty": {
+                "username": "${BASEX_USER}",
+                "password": "${BASEX_PASSWORD}"
+              }
+            },
+            "result": {
+              "@type": "Dataset",
+              "identifier": "empolis-json-output",
+              "encodingFormat": "application/json"
+            }
+          }
+        }
+      }
+    }
+  ],
+  "schedule": {
+    "@type": "Schedule",
+    "repeatFrequency": "PT12H",
+    "description": "Every 12 hours"
+  }
+}

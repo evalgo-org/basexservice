@@ -1,0 +1,47 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ScheduledAction",
+  "identifier": "iqs-concept-schemes",
+  "name": "IQS: Process Concept Schemes",
+  "description": "Query SPARQL for concept schemes and transform with XSLT",
+  "additionalProperty": {
+    "url": "http://localhost:8090/v1/api/semantic/action",
+    "httpMethod": "POST",
+    "headers": {
+      "x-api-key": "${BASEX_API_KEY}",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "@context": "https://schema.org",
+      "@type": "UpdateAction",
+      "identifier": "transform-concept-schemes",
+      "name": "Transform Concept Schemes SPARQL Result",
+      "object": {
+        "@type": "Dataset",
+        "identifier": "concept-schemes-sparql-result",
+        "contentUrl": "/tmp/concept-schemes.xml",
+        "encodingFormat": "application/rdf+xml"
+      },
+      "instrument": {
+        "@type": "SoftwareSourceCode",
+        "identifier": "concept-schemes-xslt",
+        "contentUrl": "/home/opunix/iqs/xslt/Zeiss/getConceptSchemes/00_ClusterDescriptions.xsl",
+        "programmingLanguage": "XSLT"
+      },
+      "target": {
+        "@type": "DataCatalog",
+        "identifier": "IQS",
+        "url": "${BASEX_URL}",
+        "additionalProperty": {
+          "username": "${BASEX_USER}",
+          "password": "${BASEX_PASSWORD}"
+        }
+      }
+    }
+  },
+  "schedule": {
+    "@type": "Schedule",
+    "repeatFrequency": "PT12H",
+    "description": "Every 12 hours"
+  }
+}
