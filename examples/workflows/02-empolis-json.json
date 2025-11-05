@@ -14,7 +14,7 @@
         "identifier": "upload-xslt-files",
         "name": "Upload XSLT Transformation Files",
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -54,7 +54,7 @@
         "name": "Transform SPARQL Result to Empolis JSON",
         "dependsOn": ["upload-xslt-files"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",

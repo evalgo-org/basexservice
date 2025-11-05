@@ -40,7 +40,7 @@
         "name": "Upload Device Info XSLT Stylesheet 1",
         "dependsOn": ["query-device-number-info-sparql"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -80,7 +80,7 @@
         "name": "Upload Device Info XSLT Stylesheet 2",
         "dependsOn": ["upload-device-info-xslt-1"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",

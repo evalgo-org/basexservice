@@ -40,7 +40,7 @@
         "name": "Upload Schema ST4 XSLT Stylesheet 1",
         "dependsOn": ["query-schema-st4-sparql"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -80,7 +80,7 @@
         "name": "Upload Schema ST4 XSLT Stylesheet 2",
         "dependsOn": ["upload-schema-st4-xslt-1"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -120,7 +120,7 @@
         "name": "Upload Schema ST4 XSLT Stylesheet 3",
         "dependsOn": ["upload-schema-st4-xslt-2"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -160,7 +160,7 @@
         "name": "Upload Schema ST4 XSLT Stylesheet 4",
         "dependsOn": ["upload-schema-st4-xslt-3"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -200,7 +200,7 @@
         "name": "Upload Schema ST4 XSLT Stylesheet 5",
         "dependsOn": ["upload-schema-st4-xslt-4"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -240,7 +240,7 @@
         "name": "Upload Schema ST4 XSLT Stylesheet 6",
         "dependsOn": ["upload-schema-st4-xslt-5"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",

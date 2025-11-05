@@ -5,7 +5,7 @@
   "name": "IQS: Process Concept Schemes",
   "description": "Query SPARQL for concept schemes and transform with XSLT",
   "additionalProperty": {
-    "url": "http://localhost:8090/v1/api/semantic/action",
+    "url": "registry://basexservice/v1/api/semantic/action",
     "httpMethod": "POST",
     "headers": {
       "x-api-key": "${BASEX_API_KEY}",

@@ -40,7 +40,7 @@
         "name": "Upload Top Concepts XSLT Stylesheet 1",
         "dependsOn": ["query-top-concepts-sparql"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
@@ -80,7 +80,7 @@
         "name": "Upload Top Concepts XSLT Stylesheet 2",
         "dependsOn": ["upload-top-concepts-xslt-1"],
         "additionalProperty": {
-          "url": "http://localhost:8090/v1/api/semantic/action",
+          "url": "registry://basexservice/v1/api/semantic/action",
           "httpMethod": "POST",
           "headers": {
             "x-api-key": "${BASEX_API_KEY}",
