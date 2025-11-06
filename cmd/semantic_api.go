@@ -23,140 +23,136 @@ func handleSemanticAction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to read request body: %v", err))
 	}
 
-	// Use EVE library's ParseBaseXAction for routing and parsing
-	action, err := semantic.ParseBaseXAction(body)
+	// Parse as SemanticAction
+	action, err := semantic.ParseSemanticAction(body)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse action: %v", err))
 	}
 
-	// Route to appropriate handler based on type
-	switch v := action.(type) {
-	case *semantic.TransformAction:
-		return executeTransformAction(c, v)
-	case *semantic.QueryAction:
-		return executeQueryAction(c, v)
-	case *semantic.BaseXUploadAction:
-		return executeUploadAction(c, v)
-	case *semantic.CreateDatabaseAction:
-		return executeCreateDatabaseAction(c, v)
-	case *semantic.DeleteDatabaseAction:
-		return executeDeleteDatabaseAction(c, v)
+	// Route to appropriate handler based on @type
+	switch action.Type {
+	case "TransformAction":
+		return executeTransformAction(c, action)
+	case "SearchAction":
+		return executeQueryAction(c, action)
+	case "CreateAction":
+		if _, ok := action.Properties["object"]; ok {
+			// Has object = upload action
+			return executeUploadAction(c, action)
+		}
+		// No object = create database action
+		return executeCreateDatabaseAction(c, action)
+	case "DeleteAction":
+		return executeDeleteDatabaseAction(c, action)
 	default:
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported action type: %T", v))
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported action type: %s", action.Type))
 	}
 }
 
 // executeTransformAction handles XSLT transformation operations
-func executeTransformAction(c echo.Context, action *semantic.TransformAction) error {
+func executeTransformAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Extract XSLT stylesheet and database using helpers
+	xslt, err := semantic.GetXSLTStylesheetFromAction(action)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract XSLT stylesheet", err)
+	}
+
+	database, err := semantic.GetXMLDatabaseFromAction(action)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract XML database", err)
+	}
 
 	// Extract target database credentials
-	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Target)
+	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(database)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to extract database credentials: %v", err))
+		return semantic.ReturnActionError(c, action, "Failed to extract database credentials", err)
 	}
 
-	// 1. Upload XSLT stylesheet to BaseX
-	if action.Instrument == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "XSLT stylesheet (instrument) is required")
-	}
-
-	xsltPath := action.Instrument.ContentUrl
+	// Get XSLT path
+	xsltPath := xslt.ContentUrl
 	if xsltPath == "" {
-		xsltPath = action.Instrument.CodeRepository
+		xsltPath = xslt.CodeRepository
 	}
-
 	if xsltPath == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "XSLT stylesheet path (contentUrl or codeRepository) is required")
+		return semantic.ReturnActionError(c, action, "XSLT stylesheet path required", nil)
 	}
 
 	// Upload XSLT file to BaseX
-	if err := uploadXSLTToBaseX(baseURL, username, password, action.Target.Identifier, xsltPath); err != nil {
-		return echo.NewHTTPError(http.StatusInternalServerError, fmt.Sprintf("Failed to upload XSLT: %v", err))
+	if err := uploadXSLTToBaseX(baseURL, username, password, database.Identifier, xsltPath); err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to upload XSLT", err)
 	}
 
-	// 2. Trigger transformation (implementation depends on BaseX setup)
-	// For now, return success with action status
-	action.ActionStatus = "CompletedActionStatus"
-
+	// TODO: Trigger transformation (implementation depends on BaseX setup)
+	semantic.SetSuccessOnAction(action)
 	return c.JSON(http.StatusOK, action)
 }
 
 // executeQueryAction handles XQuery execution operations
-func executeQueryAction(c echo.Context, action *semantic.QueryAction) error {
-	// Extract target database credentials
-	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Target)
+func executeQueryAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Extract query and database using helpers
+	query := semantic.GetQueryFromAction(action)
+	if query == "" {
+		return semantic.ReturnActionError(c, action, "Query is required", nil)
+	}
+
+	database, err := semantic.GetXMLDatabaseFromAction(action)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to extract database credentials: %v", err))
+		return semantic.ReturnActionError(c, action, "Failed to extract database", err)
+	}
+
+	// Extract target database credentials
+	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(database)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract database credentials", err)
 	}
 
 	// Execute XQuery against BaseX REST API
-	result, err := executeXQuery(baseURL, username, password, action.Target.Identifier, action.Query)
+	result, err := executeXQuery(baseURL, username, password, database.Identifier, query)
 	if err != nil {
-		action.ActionStatus = "FailedActionStatus"
-		action.Error = &semantic.PropertyValue{
-			Type:  "PropertyValue",
-			Name:  "error",
-			Value: err.Error(),
-		}
-		return c.JSON(http.StatusInternalServerError, action)
+		return semantic.ReturnActionError(c, action, "Failed to execute query", err)
 	}
 
-	// Create result document
-	action.Result = &semantic.XMLDocument{
-		Type:           "Dataset",
-		Identifier:     fmt.Sprintf("%s-result", action.Identifier),
-		EncodingFormat: "application/xml",
-	}
-	action.ActionStatus = "CompletedActionStatus"
+	// Store result in action properties
+	action.Properties["result"] = string(result)
+	semantic.SetSuccessOnAction(action)
 
-	// Return action with result embedded
-	response := map[string]interface{}{
-		"@context":     "https://schema.org",
-		"@type":        "SearchAction",
-		"identifier":   action.Identifier,
-		"actionStatus": "CompletedActionStatus",
-		"result":       string(result),
-	}
-
-	return c.JSON(http.StatusOK, response)
+	return c.JSON(http.StatusOK, action)
 }
 
 // executeUploadAction handles file upload to BaseX operations
-func executeUploadAction(c echo.Context, action *semantic.BaseXUploadAction) error {
-	// Extract target database credentials
-	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Target)
+func executeUploadAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Extract XML document and database using helpers
+	xmlDoc, err := semantic.GetXMLDocumentFromAction(action)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to extract database credentials: %v", err))
+		return semantic.ReturnActionError(c, action, "Failed to extract XML document", err)
 	}
 
-	// Get file path from object
-	if action.Object == nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Document object is required")
+	database, err := semantic.GetXMLDatabaseFromAction(action)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract database", err)
 	}
 
-	filePath := action.Object.ContentUrl
+	// Extract target database credentials
+	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(database)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract database credentials", err)
+	}
+
+	// Get file path
+	filePath := xmlDoc.ContentUrl
 	if filePath == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Document contentUrl is required")
+		return semantic.ReturnActionError(c, action, "Document contentUrl is required", nil)
 	}
 
 	// Check if contentUrl is an S3 URL and download if needed
 	if strings.HasPrefix(filePath, "s3://") {
 		fmt.Printf("DEBUG: Detected S3 URL: %s\n", filePath)
-		// Download from S3 via s3service
-		downloadedPath, err := downloadFromS3(filePath, action.Object.EncodingFormat)
+		downloadedPath, err := downloadFromS3(filePath, xmlDoc.EncodingFormat)
 		if err != nil {
-			action.ActionStatus = "FailedActionStatus"
-			action.Error = &semantic.PropertyValue{
-				Type:  "PropertyValue",
-				Name:  "error",
-				Value: fmt.Sprintf("Failed to download from S3: %v", err),
-			}
-			return c.JSON(http.StatusInternalServerError, action)
+			return semantic.ReturnActionError(c, action, "Failed to download from S3", err)
 		}
 		fmt.Printf("DEBUG: Downloaded to: %s\n", downloadedPath)
-		// Update filePath to the downloaded local file
 		filePath = downloadedPath
-		// Clean up temp file after upload
 		defer func() {
 			_ = os.Remove(downloadedPath)
 		}()
@@ -165,54 +161,62 @@ func executeUploadAction(c echo.Context, action *semantic.BaseXUploadAction) err
 	}
 
 	// Determine target path in BaseX
-	targetPath := action.TargetUrl
+	targetPath := semantic.GetTargetUrlFromAction(action)
 	if targetPath == "" {
-		targetPath = action.Object.Identifier
+		targetPath = xmlDoc.Identifier
 	}
 
 	// Upload file to BaseX
-	if err := uploadFileToBaseX(baseURL, username, password, action.Target.Identifier, filePath, targetPath); err != nil {
-		action.ActionStatus = "FailedActionStatus"
-		action.Error = &semantic.PropertyValue{
-			Type:  "PropertyValue",
-			Name:  "error",
-			Value: err.Error(),
-		}
-		return c.JSON(http.StatusInternalServerError, action)
+	if err := uploadFileToBaseX(baseURL, username, password, database.Identifier, filePath, targetPath); err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to upload file", err)
 	}
 
-	action.ActionStatus = "CompletedActionStatus"
+	semantic.SetSuccessOnAction(action)
 	return c.JSON(http.StatusOK, action)
 }
 
 // executeCreateDatabaseAction handles database creation operations
-func executeCreateDatabaseAction(c echo.Context, action *semantic.CreateDatabaseAction) error {
+func executeCreateDatabaseAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Extract database from result property
+	var database *semantic.XMLDatabase
+	if result, ok := action.Properties["result"]; ok {
+		switch v := result.(type) {
+		case *semantic.XMLDatabase:
+			database = v
+		case map[string]interface{}:
+			// Marshal and unmarshal for type conversion
+			data, _ := json.Marshal(v)
+			database = &semantic.XMLDatabase{}
+			if err := json.Unmarshal(data, database); err != nil {
+				return semantic.ReturnActionError(c, action, "Failed to parse database", err)
+			}
+		}
+	}
+
+	if database == nil {
+		return semantic.ReturnActionError(c, action, "Database result is required", nil)
+	}
+
 	// Extract database credentials
-	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(action.Result)
+	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(database)
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to extract database credentials: %v", err))
+		return semantic.ReturnActionError(c, action, "Failed to extract database credentials", err)
 	}
 
 	// Create database using BaseX REST API
-	if err := createBaseXDatabase(baseURL, username, password, action.Result.Identifier); err != nil {
-		action.ActionStatus = "FailedActionStatus"
-		action.Error = &semantic.PropertyValue{
-			Type:  "PropertyValue",
-			Name:  "error",
-			Value: err.Error(),
-		}
-		return c.JSON(http.StatusInternalServerError, action)
+	if err := createBaseXDatabase(baseURL, username, password, database.Identifier); err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to create database", err)
 	}
 
-	action.ActionStatus = "CompletedActionStatus"
+	semantic.SetSuccessOnAction(action)
 	return c.JSON(http.StatusOK, action)
 }
 
 // executeDeleteDatabaseAction handles database/document deletion operations
-func executeDeleteDatabaseAction(c echo.Context, action *semantic.DeleteDatabaseAction) error {
-	// Determine if deleting database or document
+func executeDeleteDatabaseAction(c echo.Context, action *semantic.SemanticAction) error {
+	// TODO: Implement database/document deletion
 	// This is a simplified implementation
-	action.ActionStatus = "CompletedActionStatus"
+	semantic.SetSuccessOnAction(action)
 	return c.JSON(http.StatusOK, action)
 }
 
