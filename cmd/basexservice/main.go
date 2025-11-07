@@ -41,7 +41,27 @@ func main() {
 			{
 				Method:      "POST",
 				Path:        "/v1/api/semantic/action",
-				Description: "Execute semantic actions (XQuery, XSLT, CreateAction, etc.)",
+				Description: "Execute semantic actions (primary interface)",
+			},
+			{
+				Method:      "POST",
+				Path:        "/v1/api/queries",
+				Description: "Execute XQuery (REST convenience - converts to SearchAction)",
+			},
+			{
+				Method:      "POST",
+				Path:        "/v1/api/transforms",
+				Description: "Execute XSLT transformation (REST convenience - converts to TransformAction)",
+			},
+			{
+				Method:      "POST",
+				Path:        "/v1/api/databases",
+				Description: "Create database (REST convenience - converts to CreateAction)",
+			},
+			{
+				Method:      "DELETE",
+				Path:        "/v1/api/databases/:name",
+				Description: "Delete database (REST convenience - converts to DeleteAction)",
 			},
 			{
 				Method:      "GET",
@@ -61,10 +81,15 @@ func main() {
 	apiGroup := e.Group("/v1/api")
 	sm.RegisterRoutes(apiGroup)
 
-	// EVE API Key middleware
+	// API Key middleware
 	apiKey := os.Getenv("BASEX_API_KEY")
 	apiKeyMiddleware := evehttp.APIKeyMiddleware(apiKey)
-	e.POST("/v1/api/semantic/action", handleSemanticAction, apiKeyMiddleware)
+
+	// Semantic action endpoint (primary interface)
+	apiGroup.POST("/semantic/action", handleSemanticAction, apiKeyMiddleware)
+
+	// REST endpoints (convenience adapters that convert to semantic actions)
+	registerRESTEndpoints(apiGroup, apiKeyMiddleware)
 
 	// Start server
 	port := os.Getenv("PORT")
