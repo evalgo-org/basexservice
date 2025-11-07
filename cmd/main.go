@@ -47,7 +47,7 @@ func main() {
 		Port:         portInt,
 		Directory:    "/home/opunix/basexservice",
 		Binary:       "basexservice",
-		Capabilities: []string{"xml-storage", "xquery", "xslt", "semantic-actions"},
+		Capabilities: []string{"xml-database", "xquery", "xslt", "xml-storage"},
 	}); err != nil {
 		logger.WithError(err).Error("Failed to register with registry")
 	}

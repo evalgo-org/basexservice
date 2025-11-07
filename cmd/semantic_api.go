@@ -29,20 +29,27 @@ func handleSemanticAction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse action: %v", err))
 	}
 
-	// Route to appropriate handler based on @type
+	// Route to appropriate handler based on @type + object type
 	switch action.Type {
 	case "TransformAction":
 		return executeTransformAction(c, action)
 	case "SearchAction":
 		return executeQueryAction(c, action)
 	case "CreateAction":
-		if _, ok := action.Properties["object"]; ok {
-			// Has object = upload action
+		// Determine action based on object type
+		if action.Object != nil && action.Object.Type == "DigitalDocument" {
+			// CreateAction + DigitalDocument = upload/store XML document
 			return executeUploadAction(c, action)
 		}
-		// No object = create database action
+		// CreateAction + Database (or no object type) = create database
 		return executeCreateDatabaseAction(c, action)
 	case "DeleteAction":
+		// Determine action based on object type
+		if action.Object != nil && action.Object.Type == "DigitalDocument" {
+			// DeleteAction + DigitalDocument = delete document
+			return executeDeleteDocumentAction(c, action)
+		}
+		// DeleteAction + Database (or no object type) = delete database
 		return executeDeleteDatabaseAction(c, action)
 	default:
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported action type: %s", action.Type))
@@ -212,10 +219,91 @@ func executeCreateDatabaseAction(c echo.Context, action *semantic.SemanticAction
 	return c.JSON(http.StatusOK, action)
 }
 
-// executeDeleteDatabaseAction handles database/document deletion operations
+// executeDeleteDatabaseAction handles database deletion operations
 func executeDeleteDatabaseAction(c echo.Context, action *semantic.SemanticAction) error {
-	// TODO: Implement database/document deletion
-	// This is a simplified implementation
+	// Extract database from object or result property
+	var database *semantic.XMLDatabase
+
+	// Try to get from Object field first
+	if action.Object != nil && action.Object.Type == "Database" {
+		// Convert Object to XMLDatabase
+		data, _ := json.Marshal(action.Object)
+		database = &semantic.XMLDatabase{}
+		if err := json.Unmarshal(data, database); err == nil && database.Identifier != "" {
+			// Successfully extracted database from Object
+		} else {
+			database = nil
+		}
+	}
+
+	// Fallback to result property
+	if database == nil {
+		if result, ok := action.Properties["result"]; ok {
+			switch v := result.(type) {
+			case *semantic.XMLDatabase:
+				database = v
+			case map[string]interface{}:
+				data, _ := json.Marshal(v)
+				database = &semantic.XMLDatabase{}
+				if err := json.Unmarshal(data, database); err != nil {
+					return semantic.ReturnActionError(c, action, "Failed to parse database", err)
+				}
+			}
+		}
+	}
+
+	if database == nil {
+		return semantic.ReturnActionError(c, action, "Database object or result is required", nil)
+	}
+
+	// Extract database credentials
+	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(database)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract database credentials", err)
+	}
+
+	// Delete database using BaseX REST API: DELETE /rest/{db}
+	if err := deleteBaseXDatabase(baseURL, username, password, database.Identifier); err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to delete database", err)
+	}
+
+	semantic.SetSuccessOnAction(action)
+	return c.JSON(http.StatusOK, action)
+}
+
+// executeDeleteDocumentAction handles document deletion operations
+func executeDeleteDocumentAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Extract document and database
+	xmlDoc, err := semantic.GetXMLDocumentFromAction(action)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract XML document", err)
+	}
+
+	database, err := semantic.GetXMLDatabaseFromAction(action)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract database", err)
+	}
+
+	// Extract target database credentials
+	baseURL, username, password, err := semantic.ExtractDatabaseCredentials(database)
+	if err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to extract database credentials", err)
+	}
+
+	// Determine document path to delete
+	documentPath := xmlDoc.Identifier
+	if documentPath == "" {
+		documentPath = xmlDoc.ContentUrl
+	}
+	if documentPath == "" {
+		return semantic.ReturnActionError(c, action, "Document identifier or contentUrl is required", nil)
+	}
+
+	// Delete document using BaseX REST API: DELETE /rest/{db}/{resource}
+	if err := deleteBaseXDocument(baseURL, username, password, database.Identifier, documentPath); err != nil {
+		return semantic.ReturnActionError(c, action, "Failed to delete document", err)
+	}
+
 	semantic.SetSuccessOnAction(action)
 	return c.JSON(http.StatusOK, action)
 }
@@ -463,6 +551,60 @@ func downloadFromS3(s3URL, encodingFormat string) (string, error) {
 	}
 
 	return downloadPath, nil
+}
+
+// deleteBaseXDatabase deletes a BaseX database
+func deleteBaseXDatabase(baseURL, username, password, dbName string) error {
+	// Delete database via BaseX REST API: DELETE /rest/{db}
+	url := fmt.Sprintf("%s/rest/%s", baseURL, dbName)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete database request: %w", err)
+	}
+
+	req.SetBasicAuth(username, password)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to delete database: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("BaseX delete database failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
+}
+
+// deleteBaseXDocument deletes a document from BaseX database
+func deleteBaseXDocument(baseURL, username, password, dbName, docPath string) error {
+	// Delete document via BaseX REST API: DELETE /rest/{db}/{resource}
+	url := fmt.Sprintf("%s/rest/%s/%s", baseURL, dbName, docPath)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete document request: %w", err)
+	}
+
+	req.SetBasicAuth(username, password)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to delete document: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 400 {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("BaseX delete document failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return nil
 }
 
 // Prevent unused import errors
