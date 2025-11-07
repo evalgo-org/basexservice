@@ -36,7 +36,7 @@ func main() {
 		Description: "XML database with XQuery and XSLT transformation support",
 		Version:     "v1",
 		Port:        8090,
-		Capabilities: []string{"xml-database", "xquery", "xslt", "xml-storage"},
+		Capabilities: []string{"xml-database", "xquery", "xslt", "xml-storage", "state-tracking"},
 		Endpoints: []evehttp.EndpointDoc{
 			{
 				Method:      "POST",
@@ -82,7 +82,7 @@ func main() {
 		Directory:    "/home/opunix/basexservice",
 		Binary:       "basexservice",
 		Version:      "v1",
-		Capabilities: []string{"xml-database", "xquery", "xslt", "xml-storage"},
+		Capabilities: []string{"xml-database", "xquery", "xslt", "xml-storage", "state-tracking"},
 		APIVersions: []registry.APIVersion{
 			{
 				Version:       "v1",
