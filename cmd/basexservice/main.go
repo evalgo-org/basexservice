@@ -9,8 +9,8 @@ import (
 
 	"eve.evalgo.org/common"
 	evehttp "eve.evalgo.org/http"
-	"eve.evalgo.org/pkg/statemanager"
 	"eve.evalgo.org/registry"
+	"eve.evalgo.org/statemanager"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 )
