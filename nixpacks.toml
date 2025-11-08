@@ -1,0 +1,20 @@
+[phases.setup]
+# Use nixos-unstable to get Go 1.25 support
+nixpkgsArchive = "f4b140d5b253f5e2a1ff4e5506edbf8267724bde"
+nixPkgs = ["go", "git", "curl"]
+
+[phases.install]
+cmds = ["go mod download"]
+
+[phases.build]
+cmds = [
+    "CGO_ENABLED=0 go build -ldflags '-w -s' -o basexservice ./cmd/basexservice"
+]
+
+[start]
+cmd = "./basexservice"
+
+[variables]
+GO111MODULE = "on"
+CGO_ENABLED = "0"
+PORT = "8080"

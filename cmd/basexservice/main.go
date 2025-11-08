@@ -7,6 +7,8 @@ import (
 	"strconv"
 	"syscall"
 
+	"eve.evalgo.org/web"
+
 	"eve.evalgo.org/common"
 	evehttp "eve.evalgo.org/http"
 	"eve.evalgo.org/registry"
@@ -21,6 +23,9 @@ func main() {
 	logger := common.ServiceLogger("basexservice", "1.0.0")
 
 	e := echo.New()
+
+	// Register EVE corporate identity assets
+	web.RegisterAssets(e)
 
 	// Middleware
 	e.Use(middleware.Logger())
