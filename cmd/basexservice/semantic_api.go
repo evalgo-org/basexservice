@@ -29,31 +29,31 @@ func handleSemanticAction(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Failed to parse action: %v", err))
 	}
 
-	// Route to appropriate handler based on @type + object type
-	switch action.Type {
-	case "TransformAction":
-		return executeTransformAction(c, action)
-	case "SearchAction":
-		return executeQueryAction(c, action)
-	case "CreateAction":
-		// Determine action based on object type
-		if action.Object != nil && action.Object.Type == "DigitalDocument" {
-			// CreateAction + DigitalDocument = upload/store XML document
-			return executeUploadAction(c, action)
-		}
-		// CreateAction + Database (or no object type) = create database
-		return executeCreateDatabaseAction(c, action)
-	case "DeleteAction":
-		// Determine action based on object type
-		if action.Object != nil && action.Object.Type == "DigitalDocument" {
-			// DeleteAction + DigitalDocument = delete document
-			return executeDeleteDocumentAction(c, action)
-		}
-		// DeleteAction + Database (or no object type) = delete database
-		return executeDeleteDatabaseAction(c, action)
-	default:
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Unsupported action type: %s", action.Type))
+	// Dispatch to registered handler using the ActionRegistry
+	// No switch statement needed - handlers are registered at startup
+	return semantic.Handle(c, action)
+}
+
+// handleCreateAction routes CreateAction to the appropriate handler based on object type
+func handleCreateAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Determine action based on object type
+	if action.Object != nil && action.Object.Type == "DigitalDocument" {
+		// CreateAction + DigitalDocument = upload/store XML document
+		return executeUploadAction(c, action)
 	}
+	// CreateAction + Database (or no object type) = create database
+	return executeCreateDatabaseAction(c, action)
+}
+
+// handleDeleteAction routes DeleteAction to the appropriate handler based on object type
+func handleDeleteAction(c echo.Context, action *semantic.SemanticAction) error {
+	// Determine action based on object type
+	if action.Object != nil && action.Object.Type == "DigitalDocument" {
+		// DeleteAction + DigitalDocument = delete document
+		return executeDeleteDocumentAction(c, action)
+	}
+	// DeleteAction + Database (or no object type) = delete database
+	return executeDeleteDatabaseAction(c, action)
 }
 
 // executeTransformAction handles XSLT transformation operations

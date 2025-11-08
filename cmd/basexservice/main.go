@@ -12,6 +12,7 @@ import (
 	"eve.evalgo.org/common"
 	evehttp "eve.evalgo.org/http"
 	"eve.evalgo.org/registry"
+	"eve.evalgo.org/semantic"
 	"eve.evalgo.org/statemanager"
 	"eve.evalgo.org/tracing"
 	"github.com/labstack/echo/v4"
@@ -21,6 +22,13 @@ import (
 func main() {
 	// Initialize logger
 	logger := common.ServiceLogger("basexservice", "1.0.0")
+
+	// Register action handlers with the semantic action registry
+	// This allows the service to handle semantic actions without modifying switch statements
+	semantic.MustRegister("TransformAction", executeTransformAction)
+	semantic.MustRegister("SearchAction", executeQueryAction)
+	semantic.MustRegister("CreateAction", handleCreateAction)
+	semantic.MustRegister("DeleteAction", handleDeleteAction)
 
 	e := echo.New()
 
