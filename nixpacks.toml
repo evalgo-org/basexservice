@@ -1,20 +1,20 @@
+# Standard Nixpacks configuration for EVE Go service: basexservice
+# Ensures consistent, optimized builds across all services
+
 [phases.setup]
-# Use nixos-unstable to get Go 1.25 support
-nixpkgsArchive = "f4b140d5b253f5e2a1ff4e5506edbf8267724bde"
-nixPkgs = ["go", "git", "curl"]
+nixPkgs = ["go_1_23"]
 
 [phases.install]
 cmds = ["go mod download"]
 
 [phases.build]
 cmds = [
-    "CGO_ENABLED=0 go build -ldflags '-w -s' -o basexservice ./cmd/basexservice"
+  # Build static binary with optimizations
+  # CGO_ENABLED=0: Create static binary (no C dependencies)
+  # -ldflags '-w -s': Strip debug info and symbol table (smaller binary)
+  # -trimpath: Remove file system paths from binary (reproducible builds)
+  "CGO_ENABLED=0 go build -ldflags '-w -s' -trimpath -o basexservice ./cmd/*"
 ]
 
 [start]
 cmd = "./basexservice"
-
-[variables]
-GO111MODULE = "on"
-CGO_ENABLED = "0"
-PORT = "8080"
