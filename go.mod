@@ -82,3 +82,5 @@ require (
 	golang.org/x/time v0.12.0 // indirect
 	google.golang.org/protobuf v1.36.10 // indirect
 )
+
+replace eve.evalgo.org => /home/opunix/eve
