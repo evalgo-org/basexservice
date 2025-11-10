@@ -35,7 +35,7 @@ func handleSemanticAction(c echo.Context) error {
 }
 
 // handleCreateAction routes CreateAction to the appropriate handler based on object type
-func handleCreateAction(c echo.Context, action *semantic.SemanticAction) error {
+func handleCreateActionImpl(c echo.Context, action *semantic.SemanticAction) error {
 	// Determine action based on object type
 	if action.Object != nil && action.Object.Type == "DigitalDocument" {
 		// CreateAction + DigitalDocument = upload/store XML document
@@ -46,7 +46,7 @@ func handleCreateAction(c echo.Context, action *semantic.SemanticAction) error {
 }
 
 // handleDeleteAction routes DeleteAction to the appropriate handler based on object type
-func handleDeleteAction(c echo.Context, action *semantic.SemanticAction) error {
+func handleDeleteActionImpl(c echo.Context, action *semantic.SemanticAction) error {
 	// Determine action based on object type
 	if action.Object != nil && action.Object.Type == "DigitalDocument" {
 		// DeleteAction + DigitalDocument = delete document
@@ -57,7 +57,7 @@ func handleDeleteAction(c echo.Context, action *semantic.SemanticAction) error {
 }
 
 // executeTransformAction handles XSLT transformation operations
-func executeTransformAction(c echo.Context, action *semantic.SemanticAction) error {
+func executeTransformActionImpl(c echo.Context, action *semantic.SemanticAction) error {
 	// Extract XSLT stylesheet and database using helpers
 	xslt, err := semantic.GetXSLTStylesheetFromAction(action)
 	if err != nil {
@@ -95,7 +95,7 @@ func executeTransformAction(c echo.Context, action *semantic.SemanticAction) err
 }
 
 // executeQueryAction handles XQuery execution operations
-func executeQueryAction(c echo.Context, action *semantic.SemanticAction) error {
+func executeQueryActionImpl(c echo.Context, action *semantic.SemanticAction) error {
 	// Extract query and database using helpers
 	query := semantic.GetQueryFromAction(action)
 	if query == "" {
@@ -119,8 +119,12 @@ func executeQueryAction(c echo.Context, action *semantic.SemanticAction) error {
 		return semantic.ReturnActionError(c, action, "Failed to execute query", err)
 	}
 
-	// Store result in action properties
-	action.Properties["result"] = string(result)
+	// Use semantic Result structure
+	action.Result = &semantic.SemanticResult{
+		Type:   "Dataset",
+		Format: "application/xml",
+		Output: string(result), // Raw XML result
+	}
 	semantic.SetSuccessOnAction(action)
 
 	return c.JSON(http.StatusOK, action)
@@ -609,3 +613,39 @@ func deleteBaseXDocument(baseURL, username, password, dbName, docPath string) er
 
 // Prevent unused import errors
 var _ = multipart.NewWriter(nil)
+
+// executeTransformAction wraps the implementation to match ActionHandler signature
+func executeTransformAction(c echo.Context, actionInterface interface{}) error {
+	action, ok := actionInterface.(*semantic.SemanticAction)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid action type")
+	}
+	return executeTransformActionImpl(c, action)
+}
+
+// executeQueryAction wraps the implementation to match ActionHandler signature
+func executeQueryAction(c echo.Context, actionInterface interface{}) error {
+	action, ok := actionInterface.(*semantic.SemanticAction)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid action type")
+	}
+	return executeQueryActionImpl(c, action)
+}
+
+// handleCreateAction wraps the implementation to match ActionHandler signature
+func handleCreateAction(c echo.Context, actionInterface interface{}) error {
+	action, ok := actionInterface.(*semantic.SemanticAction)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid action type")
+	}
+	return handleCreateActionImpl(c, action)
+}
+
+// handleDeleteAction wraps the implementation to match ActionHandler signature
+func handleDeleteAction(c echo.Context, actionInterface interface{}) error {
+	action, ok := actionInterface.(*semantic.SemanticAction)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid action type")
+	}
+	return handleDeleteActionImpl(c, action)
+}

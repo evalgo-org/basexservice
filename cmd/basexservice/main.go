@@ -53,12 +53,13 @@ func main() {
 
 	// Documentation endpoint
 	e.GET("/v1/api/docs", evehttp.DocumentationHandler(evehttp.ServiceDocConfig{
-		ServiceID:    "basexservice",
-		ServiceName:  "BaseX XML Database Service",
-		Description:  "XML database with XQuery and XSLT transformation support",
-		Version:      "v1",
-		Port:         8090,
-		Capabilities: []string{"xml-database", "xquery", "xslt", "xml-storage", "state-tracking"},
+		ServiceID:           "basexservice",
+		ServiceName:         "BaseX XML Database Service",
+		Description:         "XML database with XQuery and XSLT transformation support",
+		Version:             "v1",
+		Port:                8090,
+		IncludeDependencies: true,
+		Capabilities:        []string{"xml-database", "xquery", "xslt", "xml-storage", "state-tracking"},
 		Endpoints: []evehttp.EndpointDoc{
 			{
 				Method:      "POST",
