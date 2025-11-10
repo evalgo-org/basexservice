@@ -649,3 +649,12 @@ func handleDeleteAction(c echo.Context, actionInterface interface{}) error {
 	}
 	return handleDeleteActionImpl(c, action)
 }
+
+// handleUploadAction wraps the upload implementation to match ActionHandler signature
+func handleUploadAction(c echo.Context, actionInterface interface{}) error {
+	action, ok := actionInterface.(*semantic.SemanticAction)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid action type")
+	}
+	return executeUploadAction(c, action)
+}

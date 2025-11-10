@@ -29,6 +29,7 @@ func main() {
 	semantic.MustRegister("SearchAction", executeQueryAction)
 	semantic.MustRegister("CreateAction", handleCreateAction)
 	semantic.MustRegister("DeleteAction", handleDeleteAction)
+	semantic.MustRegister("UploadAction", handleUploadAction) // Handle UploadAction directly
 
 	e := echo.New()
 
